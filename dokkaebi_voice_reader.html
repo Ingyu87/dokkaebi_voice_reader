@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>도깨비 목소리 리더</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #2c3e50; /* 어두운 배경 */
+            color: #ecf0f1;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: #34495e;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #e74c3c; /* 도깨비 느낌의 빨간색 */
+            margin-bottom: 25px;
+            font-size: 2.2em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        textarea {
+            width: calc(100% - 20px);
+            height: 150px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 2px solid #c0392b;
+            border-radius: 8px;
+            font-size: 1.1em;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        textarea:focus {
+            border-color: #e74c3c;
+        }
+
+        button {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover {
+            background-color: #c0392b;
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        #status {
+            margin-top: 25px;
+            font-size: 1.1em;
+            color: #2ecc71; /* 읽는 중 색상 */
+            min-height: 25px; /* 공간 확보 */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>👹 도깨비 목소리 변조기 👹</h1>
+        <textarea id="textInput" placeholder="도깨비가 읽어줄 문구를 입력하세요..."></textarea>
+        <button id="readButton">도깨비 목소리로 읽기</button>
+        <p id="status"></p>
+    </div>
+
+    <script>
+        const textInput = document.getElementById('textInput');
+        const readButton = document.getElementById('readButton');
+        const statusDisplay = document.getElementById('status');
+
+        let audioContext;
+        let sourceNode;
+        let gainNode;
+        let pitchShifterNode; // 이 부분은 Web Audio API만으로는 복잡하여 단순 속도/피치 변경으로 대체합니다.
+
+        // Web Audio API 초기화 (최초 버튼 클릭 시)
+        function initAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        readButton.addEventListener('click', async () => {
+            const text = textInput.value.trim();
+            if (!text) {
+                statusDisplay.textContent = '아무것도 입력하지 않았소이다...';
+                statusDisplay.style.color = '#f1c40f'; // 경고 색상
+                return;
+            }
+
+            statusDisplay.textContent = '도깨비가 열심히 읽는 중이오이다...';
+            statusDisplay.style.color = '#2ecc71'; // 읽는 중 색상
+
+            initAudioContext(); // AudioContext 초기화
+
+            try {
+                // 1. 텍스트를 음성으로 변환 (Web Speech API 사용)
+                const utterance = new SpeechSynthesisUtterance(text);
+                
+                // 한국어 목소리 설정 (시스템에 따라 다를 수 있습니다)
+                const voices = speechSynthesis.getVoices();
+                const koreanVoice = voices.find(voice => voice.lang === 'ko-KR' && voice.name.includes('Google') || voice.name.includes('Korean')); // Google 한국어 목소리 우선
+                if (koreanVoice) {
+                    utterance.voice = koreanVoice;
+                } else {
+                    console.warn("한국어 목소리를 찾을 수 없습니다. 기본 목소리를 사용합니다.");
+                }
+
+                utterance.rate = 0.7; // 말하는 속도 (느리게: 0.5 ~ 1.0)
+                utterance.pitch = 0.5; // 음높이 (낮게: 0.0 ~ 1.0)
+
+                // 음성이 끝났을 때 상태 메시지 초기화
+                utterance.onend = () => {
+                    statusDisplay.textContent = '말씀 다 끝났소이다.';
+                    statusDisplay.style.color = '#bdc3c7'; // 기본 색상
+                };
+                utterance.onerror = (event) => {
+                    statusDisplay.textContent = `오류 발생: ${event.error}`;
+                    statusDisplay.style.color = '#e74c3c'; // 오류 색상
+                };
+
+                // 스피치 시작
+                speechSynthesis.speak(utterance);
+
+                // 참고: SpeechSynthesisUtterance 자체에 Web Audio API 필터를 직접 연결하는 것은 복잡합니다.
+                // 위에서는 utterance.rate와 utterance.pitch를 조절하여 도깨비 느낌을 냈습니다.
+                // 더 고급 음성 변조(에코, 왜곡 등)는 MediaStream Destination을 SpeechSynthesisUtterance에 연결하거나
+                // 서버에서 음성을 생성하여 변조 후 스트리밍하는 방식이 필요합니다.
+                // 여기서는 브라우저의 TTS API가 제공하는 기본적인 변조 파라미터를 활용합니다.
+
+            } catch (error) {
+                console.error('음성 변환 중 오류 발생:', error);
+                statusDisplay.textContent = '음성 변환 중 오류가 발생했소이다...';
+                statusDisplay.style.color = '#e74c3c'; // 오류 색상
+            }
+        });
+
+        // 초기 목소리 목록 로딩 (비동기 처리)
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = () => {
+                // 목소리가 로드된 후 필요하다면 추가 작업
+                console.log("목소리 목록 로드 완료");
+            };
+        }
+    </script>
+</body>
+</html>
